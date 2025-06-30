@@ -92,7 +92,7 @@ def get_args():
         help="A BED3 file specifying the regions to extract features, \
             or a directory containing BED files or a .txt file with BED file paths.\n",
     )
-    general_group.add_argument("-t", "--threads", type=int, default=1, help="Number of threads to use. Default: [1]")
+    general_group.add_argument("-c", "--cpu", type=int, default=1, help="Number of CPU to use. Default: [1]")
     general_group.add_argument(
         "--gc",
         action="store_true",

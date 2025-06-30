@@ -12,7 +12,7 @@ From: ghcr.io/prefix-dev/pixi:0.48.2
 # Install dependencies
 %post
     apt update
-    apt install -y git strace
+    apt install -y git
 
     cd /opt/app
 

@@ -1,9 +1,0 @@
-../TSSClassification/data/stein_manu/control_PoN/results/EE87920.hg38.frag.tsv.bam
-../TSSClassification/data/stein_manu/control_PoN/results/EE87921.hg38.frag.tsv.bam
-../TSSClassification/data/stein_manu/control_PoN/results/EE87922.hg38.frag.tsv.bam
-../TSSClassification/data/stein_manu/control_PoN/results/EE87923.hg38.frag.tsv.bam
-../TSSClassification/data/stein_manu/control_PoN/results/EE87924.hg38.frag.tsv.bam
-../TSSClassification/data/stein_manu/control_PoN/results/EE87925.hg38.frag.tsv.bam
-../TSSClassification/data/stein_manu/control_PoN/results/EE87926.hg38.frag.tsv.bam
-../TSSClassification/data/stein_manu/control_PoN/results/EE87927.hg38.frag.tsv.bam
-../TSSClassification/data/stein_manu/control_PoN/results/EE87928.hg38.frag.tsv.bam

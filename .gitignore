@@ -1,8 +1,10 @@
 # Directories
 extracted_features/
+logs/
 
 # Files
 *.sif
+*.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
