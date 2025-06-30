@@ -56,19 +56,11 @@ def get_args():
         "--features",
         type=str,
         default="CNA,NOF,WPS,EM,EMR,FP,FPR,NP,OCF,PFE,TSSC",
-        help="Features to extract, separated by commas (e.g., CNA,NOF).\n"
-        "Available: CNA, NOF, WPS, EM, EMR, FP, FPR, NP, OCF, PFE, TSSC.\n"
-        "Default: All features will be extracted.",
+        help="Features to extract, separated by commas (e.g., CNA,NOF).\nAvailable: CNA, NOF, WPS, EM, EMR, FP, FPR, NP, OCF, PFE, TSSC.\nDefault: All features will be extracted.",
     )
-    general_group.add_argument(
-        "--mapq", type=int, default=30, help="Minimum mapping quality for reads to be considered. Default: [30]"
-    )
-    general_group.add_argument(
-        "--min_frag_len", type=int, default=51, help="Minimum fragment length to consider. Default: [51]"
-    )
-    general_group.add_argument(
-        "--max_frag_len", type=int, default=400, help="Maximum fragment length to consider. Default: [400]"
-    )
+    general_group.add_argument("--mapq", type=int, default=30, help="Minimum mapping quality for reads to be considered. Default: [30]")
+    general_group.add_argument("--min_frag_len", type=int, default=51, help="Minimum fragment length to consider. Default: [51]")
+    general_group.add_argument("--max_frag_len", type=int, default=400, help="Maximum fragment length to consider. Default: [400]")
     general_group.add_argument(
         "-g",
         "--genome_version",
@@ -92,6 +84,11 @@ def get_args():
         help="A BED3 file specifying the regions to extract features, \
             or a directory containing BED files or a .txt file with BED file paths.\n",
     )
+    general_group.add_argument(
+        "-gw",
+        "--genome_wide",
+        action="store_true", default=False,
+        help="If set, the script will extract features genome-wide without using a BED file. Default: [False]")
     general_group.add_argument("-c", "--cpu", type=int, default=1, help="Number of CPU to use. Default: [1]")
     general_group.add_argument(
         "--gc",
@@ -119,53 +116,31 @@ def get_args():
 
     # --- WPS specific options ---
     wps_group = parser.add_argument_group("Options specific for Windowed Protection Score (WPS)")
-    wps_group.add_argument(
-        "-x", "--min_len_long", type=int, default=120, help="Min fragment length for long fragments WPS. Default: [120]"
-    )
-    wps_group.add_argument(
-        "-X", "--max_len_long", type=int, default=180, help="Max fragment length for long fragments WPS. Default: [180]"
-    )
-    wps_group.add_argument(
-        "-w", "--win_size_long", type=int, default=120, help="Window size for long fragments WPS. Default: [120]"
-    )
-    wps_group.add_argument(
-        "-m", "--min_len_short", type=int, default=35, help="Min fragment length for short fragments WPS. Default: [35]"
-    )
-    wps_group.add_argument(
-        "-M", "--max_len_short", type=int, default=80, help="Max fragment length for short fragments WPS. Default: [80]"
-    )
-    wps_group.add_argument(
-        "-W", "--win_size_short", type=int, default=16, help="Window size for short fragments WPS. Default: [16]"
-    )
+    wps_group.add_argument("-x", "--min_len_long", type=int, default=120, help="Min fragment length for long fragments WPS. Default: [120]")
+    wps_group.add_argument("-X", "--max_len_long", type=int, default=180, help="Max fragment length for long fragments WPS. Default: [180]")
+    wps_group.add_argument("-w", "--win_size_long", type=int, default=120, help="Window size for long fragments WPS. Default: [120]")
+    wps_group.add_argument("-m", "--min_len_short", type=int, default=35, help="Min fragment length for short fragments WPS. Default: [35]")
+    wps_group.add_argument("-M", "--max_len_short", type=int, default=80, help="Max fragment length for short fragments WPS. Default: [80]")
+    wps_group.add_argument("-W", "--win_size_short", type=int, default=16, help="Window size for short fragments WPS. Default: [16]")
 
     # --- EM specific options ---
     em_group = parser.add_argument_group("Options specific for End Motif (EM)")
     em_group.add_argument("-f", "--fasta", type=str, default="hg38/ref.fa", help="Reference genome in FASTA format.")
-    em_group.add_argument(
-        "-k", "--kmer_size", type=int, default=3, help="K-mer size for motif extraction. Default: [3]"
-    )
+    em_group.add_argument("-k", "--kmer_size", type=int, default=3, help="K-mer size for motif extraction. Default: [3]")
 
     # --- NP specific options ---
     np_group = parser.add_argument_group("Options specific for Nucleosome Profile (NP)")
-    np_group.add_argument(
-        "-l", "--sites_path", type=str, help="Directory containing a list of files with each file for a set of sites."
-    )
+    np_group.add_argument("-l", "--sites_path", type=str, help="Directory containing a list of files with each file for a set of sites.")
 
     # --- PFE specific options ---
     pfe_group = parser.add_argument_group("Options for Promoter Fragmentation Entropy (PFE)")
-    pfe_group.add_argument(
-        "-T", "--tss_info", type=str, help="A TAB-delimited TSS information file without any header."
-    )
+    pfe_group.add_argument("-T", "--tss_info", type=str, help="A TAB-delimited TSS information file without any header.")
     pfe_group.add_argument("--PFE_params", type=str, help="Additional parameter string for PFE analysis.")
 
     # --- TSSC specific options ---
     tssc_group = parser.add_argument_group("Options for TSS Coverage (TSSC)")
-    tssc_group.add_argument(
-        "-u", "--upstream", type=int, default=1000, help="Number of base pairs upstream of TSS. Default: [1000]"
-    )
-    tssc_group.add_argument(
-        "-d", "--downstream", type=int, default=1000, help="Number of base pairs downstream of TSS. Default: [1000]"
-    )
+    tssc_group.add_argument("-u", "--upstream", type=int, default=1000, help="Number of base pairs upstream of TSS. Default: [1000]")
+    tssc_group.add_argument("-d", "--downstream", type=int, default=1000, help="Number of base pairs downstream of TSS. Default: [1000]")
     tssc_group.add_argument("-S", "--tss_file", type=str, help="A BED6 file specifying the coordinates of TSSs.")
     tssc_group.add_argument(
         "-n",
@@ -176,9 +151,7 @@ def get_args():
         help="Normalization method for bamCoverage. Default: [RPKM]",
     )
     tssc_group.add_argument("--bamCoverage_params", type=str, help="Additional parameter string for bamCoverage.")
-    tssc_group.add_argument(
-        "--multiBigwigSummary_params", type=str, help="Additional parameter string for multiBigwigSummary."
-    )
+    tssc_group.add_argument("--multiBigwigSummary_params", type=str, help="Additional parameter string for multiBigwigSummary.")
 
     return parser.parse_args()
 
@@ -270,10 +243,10 @@ def run_analysis(args):
     features_to_extract = {feature.strip().upper() for feature in args.features.split(",")}
     print(f"Requested features: {', '.join(sorted(features_to_extract))}")
 
-    nr_of_processes = min(mp.cpu_count(), len(bam_files), args.threads)
+    nr_of_processes = min(mp.cpu_count(), len(bam_files), args.cpu)
     nr_of_processes = int(nr_of_processes) if nr_of_processes > 0 else 1
 
-    if len(bed_files) > 0:
+    if args.bed_file:
         print(f"Using BED files: {', '.join(bed_files)}")
 
         for bed_file in bed_files:
@@ -302,6 +275,23 @@ def run_analysis(args):
 
     # Process each BAM file
     # @TODO: Make genome-wide feature extraction
+    if not args.bed_file or args.genome_wide:
+        print("Processing genome-wide BAM files...")
+
+        # Create a specific output directory for genome-wide features
+        genome_wide_output_dir = output_path / "genome_wide"
+        genome_wide_output_dir.mkdir(parents=True, exist_ok=True)
+
+        starmap_args = []
+        for i in range(len(bam_files)):
+            starmap_args.append((bam_files[i], genome_wide_output_dir, None, gc_files[i], args))
+
+        print(f"Using {nr_of_processes} threads for processing.")
+
+        with mp.Pool(processes=nr_of_processes) as pool:
+            if "EM" in features_to_extract:
+                print("  -> Extracting EM...")
+                pool.starmap(calculate_em, starmap_args)
     # for bam_file in bam_files:
     #     bam_path = Path(bam_file)
     #     if not bam_path.is_file():

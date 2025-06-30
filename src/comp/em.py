@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pysam
 import src.comp.gc as gc_module
+import src.comp.util as util
 
 
 def initialize_kmer_dictionary(k: int) -> dict:
@@ -82,45 +83,20 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
         print(e)
         return None
 
-    # From GCparagon:
-    # 4 (0x4): The read is unmapped.
-    # 8 (0x8): The read's mate is unmapped.
-    # 256 (0x100): The alignment is not primary.
-    #              (This filters out secondary alignments, which can occur when a read maps to multiple locations).
-    # 512 (0x200): The read failed quality control checks.
-    # 1024 (0x400): The read is a PCR or optical duplicate.
-    # 2048 (0x800): The alignment is supplementary.
-    #              (This is another type of non-primary alignment, often used for chimeric reads).
-    exclude_flags = np.uint32(3852)  # = 256 + 2048 + 512 + 1024 + 4 + 8
-    exclude_flags_binary = bin(exclude_flags)
+    bed = pd.DataFrame({"chrom": [None], "start": [None], "end": [None]}) if bed_file is None or not Path(bed_file).exists() \
+          else pd.read_csv(bed_file, sep="\t", header=None, usecols=[0, 1, 2], names=["chrom", "start", "end"])
 
-    bed = pd.read_csv(bed_file, sep="\t", header=None, usecols=[0, 1, 2], names=["chrom", "start", "end"])
     for locus in bed.itertuples(index=False):
         chrom = locus.chrom
         start = locus.start
         end = locus.end
 
-        if chrom not in bam.references:
+        if chrom is not None and chrom not in bam.references:
             continue  # Skip if the chromosome is not in the BAM file
 
-        # Fetch reads overlapping the region
-        try:
-            filtered_alignments = filter(
-                lambda a: a.is_paired
-                and bin(~np.uint32(a.flag) & exclude_flags) == exclude_flags_binary
-                and a.mapping_quality >= 5
-                and (args.min_frag_len <= abs(a.template_length) <= args.max_frag_len)
-                and not a.is_unmapped,
-                bam.fetch(
-                    contig=chrom,
-                    start=start - args.max_frag_len,
-                    stop=end + args.max_frag_len,
-                ),
-            )
-        except Exception as e:
-            print(f"Something went wrong while fetching reads for locus {locus}")
-            print(f"BAM file: {bam_path}")
-            print(e)
+        filtered_alignments = util.get_filtered_alignments(bam, args, chrom=chrom, start=start, end=end)
+        if filtered_alignments is None:
+            print(f"No alignments found for {chrom}:{start}-{end}")
             continue
 
         for read in filtered_alignments:
@@ -148,7 +124,7 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
 
             try:
                 # OPTIMIZATION: Fetch the entire sequence (upstream+fragment+downstream) in one go
-                ref_seq = ref_fasta.fetch(chrom, fetch_start, fetch_end).upper()
+                ref_seq = ref_fasta.fetch(read.reference_name, fetch_start, fetch_end).upper()
 
                 # Check if we got the expected length; if not, it's at a contig boundary
                 if len(ref_seq) != (fetch_end - fetch_start):
@@ -201,15 +177,3 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
 
     print(f"EM features saved to {output_save_file}")
     return s3
-
-
-def calculate_em_gw(bam_path, output_path, args):
-    """
-    Placeholder function to calculate EM features in a genome-wide manner.
-    This function should implement the actual logic for EM feature extraction.
-    """
-    print(f"Calculating EM features genome-wide for {bam_path} and saving to {output_path}")
-    print(args)
-    # Implement the actual EM feature extraction logic here
-    # For now, we will just simulate the process with a print statement
-    # In a real implementation, you would read the BAM file and extract relevant features
