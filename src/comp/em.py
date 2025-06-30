@@ -1,9 +1,11 @@
 import itertools
-import pysam
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-import comp.src.gc as gc_module
+import pysam
+import src.comp.gc as gc_module
+
 
 def initialize_kmer_dictionary(k: int) -> dict:
     """
@@ -15,14 +17,15 @@ def initialize_kmer_dictionary(k: int) -> dict:
     Returns:
         A dictionary where keys are all possible k-mers of length k
         (composed of 'A', 'C', 'T', 'G') and all values are 0.
-        
+
     Raises:
         ValueError: If k is not a positive integer.
     """
     if not isinstance(k, int) or k <= 0:
-        raise ValueError("k must be a positive integer.")
+        msg = "k must be a positive integer."
+        raise ValueError(msg)
 
-    bases = ['A', 'C', 'T', 'G']
+    bases = ["A", "C", "T", "G"]
     kmer_dict = {}
 
     # itertools.product generates the cartesian product of the input iterables.
@@ -34,13 +37,15 @@ def initialize_kmer_dictionary(k: int) -> dict:
         # We join them to form the k-mer string, e.g., "AAT"
         kmer = "".join(p)
         kmer_dict[kmer] = 0
-        
+
     return kmer_dict
+
 
 def reverse_complement(dna_seq: str) -> str:
     """Computes the reverse complement of a DNA sequence."""
     complement_map = str.maketrans("ATCGN", "TAGCN")
     return dna_seq.upper().translate(complement_map)[::-1]
+
 
 def calculate_em(bam_path, output_path, bed_file, gc_file, args):
     """
@@ -58,7 +63,7 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
     print(f"Calculating EM features for {bam_path} and saving to {output_path}")
     output_save_file = output_path / (Path(bam_path).stem + "_EM.csv")
     print(f"Output will be saved to {output_save_file}")
-    
+
     if args.gc:
         gc_matrix = gc_module.load_gc_matrix(gc_file, args.min_frag_len, args.max_frag_len)
         print(f"Loaded GC matrix from {gc_file}")
@@ -75,19 +80,21 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
     except Exception as e:
         print(f"Something went wrong while opening the BAM file: {bam_path}")
         print(e)
-        return
-        
+        return None
+
     # From GCparagon:
     # 4 (0x4): The read is unmapped.
     # 8 (0x8): The read's mate is unmapped.
-    # 256 (0x100): The alignment is not primary. (This filters out secondary alignments, which can occur when a read maps to multiple locations).
+    # 256 (0x100): The alignment is not primary.
+    #              (This filters out secondary alignments, which can occur when a read maps to multiple locations).
     # 512 (0x200): The read failed quality control checks.
     # 1024 (0x400): The read is a PCR or optical duplicate.
-    # 2048 (0x800): The alignment is supplementary. (This is another type of non-primary alignment, often used for chimeric reads).
+    # 2048 (0x800): The alignment is supplementary.
+    #              (This is another type of non-primary alignment, often used for chimeric reads).
     exclude_flags = np.uint32(3852)  # = 256 + 2048 + 512 + 1024 + 4 + 8
     exclude_flags_binary = bin(exclude_flags)
 
-    bed = pd.read_csv(bed_file, sep='\t', header=None, usecols=[0, 1, 2], names=['chrom', 'start', 'end'])
+    bed = pd.read_csv(bed_file, sep="\t", header=None, usecols=[0, 1, 2], names=["chrom", "start", "end"])
     for locus in bed.itertuples(index=False):
         chrom = locus.chrom
         start = locus.start
@@ -99,13 +106,10 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
         # Fetch reads overlapping the region
         try:
             filtered_alignments = filter(
-                lambda a:
-                a.is_paired
+                lambda a: a.is_paired
                 and bin(~np.uint32(a.flag) & exclude_flags) == exclude_flags_binary
                 and a.mapping_quality >= 5
-                and (
-                    args.min_frag_len <= abs(a.template_length) <= args.max_frag_len
-                )
+                and (args.min_frag_len <= abs(a.template_length) <= args.max_frag_len)
                 and not a.is_unmapped,
                 bam.fetch(
                     contig=chrom,
@@ -125,19 +129,19 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
                 continue
 
             tlen = abs(read.template_length)
-            
+
             # Determine fragment coordinates and the extended region to fetch
-            if not read.is_reverse: # Fragment is on the forward strand
+            if not read.is_reverse:  # Fragment is on the forward strand
                 frag_start = read.reference_start
                 frag_end = frag_start + tlen
-            else: # Fragment is on the reverse strand
+            else:  # Fragment is on the reverse strand
                 frag_end = read.reference_end
                 frag_start = frag_end - tlen
 
             # Define the window to fetch from the reference genome
             fetch_start = frag_start - 3
             fetch_end = frag_end + 3
-            
+
             # Ensure we don't fetch from negative coordinates
             if fetch_start < 0:
                 continue
@@ -163,32 +167,41 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
                     read_value = gc_matrix.get(gc_content, {}).get(tlen, 0)
 
                 # Increment counts if the motifs are valid keys
-                if s3_motif in s3: s3[s3_motif] += read_value
-                if u3_motif in u3: u3[u3_motif] += read_value
-                if e3_motif in e3: e3[e3_motif] += read_value
-                if d3_motif in d3: d3[d3_motif] += read_value
-            
+                if s3_motif in s3:
+                    s3[s3_motif] += read_value
+                if u3_motif in u3:
+                    u3[u3_motif] += read_value
+                if e3_motif in e3:
+                    e3[e3_motif] += read_value
+                if d3_motif in d3:
+                    d3[d3_motif] += read_value
+
             except Exception as e:
                 # Catch errors from fetching sequence, e.g., at chromosome ends
-                print(f"Could not process motif for read {read.query_name} at {chrom}:{read.reference_start}. Error: {e}")
+                print(
+                    f"Could not process motif for read {read.query_name} at {chrom}:{read.reference_start}. Error: {e}"
+                )
                 continue
 
     bam.close()
     ref_fasta.close()
 
     # Create a DataFrame for each motif dictionary
-    motif_df = pd.DataFrame({
-        's3': pd.Series(s3),
-        # 'u3': pd.Series(u3),
-        # 'e3': pd.Series(e3),
-        # 'd3': pd.Series(d3)
-    })
-    motif_df.index.name = 'motif'
-    motif_df.to_csv(output_save_file, sep=',', index=True)
+    motif_df = pd.DataFrame(
+        {
+            "s3": pd.Series(s3),
+            # 'u3': pd.Series(u3),
+            # 'e3': pd.Series(e3),
+            # 'd3': pd.Series(d3)
+        }
+    )
+    motif_df.index.name = "motif"
+    motif_df.to_csv(output_save_file, sep=",", index=True)
     print(motif_df)
 
     print(f"EM features saved to {output_save_file}")
     return s3
+
 
 def calculate_em_gw(bam_path, output_path, args):
     """
@@ -196,7 +209,7 @@ def calculate_em_gw(bam_path, output_path, args):
     This function should implement the actual logic for EM feature extraction.
     """
     print(f"Calculating EM features genome-wide for {bam_path} and saving to {output_path}")
+    print(args)
     # Implement the actual EM feature extraction logic here
     # For now, we will just simulate the process with a print statement
     # In a real implementation, you would read the BAM file and extract relevant features
-    pass
