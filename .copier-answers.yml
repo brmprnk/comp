@@ -1,0 +1,14 @@
+# Changes here will be overwritten by Copier
+_commit: v0.2.19
+_src_path: git+https://gitlab.ewi.tudelft.nl/reit/python-package-template
+email: I.B.Pronk@tudelft.nl
+environment_manager: pixi
+full_name: brmprnk
+host: github.com
+license: GPL
+min_python_version: '3.12'
+org: brmprnk
+project_name: comp
+project_short_description: Analysis of cfDNA fragmentomic features
+python_name: comp
+url: https://github.com/brmprnk/comp
