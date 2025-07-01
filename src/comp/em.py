@@ -1,7 +1,6 @@
 import itertools
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pysam
 import src.comp.gc as gc_module
@@ -83,8 +82,7 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
         print(e)
         return None
 
-    bed = pd.DataFrame({"chrom": [None], "start": [None], "end": [None]}) if bed_file is None or not Path(bed_file).exists() \
-          else pd.read_csv(bed_file, sep="\t", header=None, usecols=[0, 1, 2], names=["chrom", "start", "end"])
+    bed = pd.DataFrame({"chrom": [None], "start": [None], "end": [None]}) if bed_file is None or not Path(bed_file).exists() else pd.read_csv(bed_file, sep="\t", header=None, usecols=[0, 1, 2], names=["chrom", "start", "end"])
 
     for locus in bed.itertuples(index=False):
         chrom = locus.chrom
@@ -142,6 +140,8 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
                     gc_content = gc_module.get_gc_content(ref_seq[3:-3])
                     read_value = gc_matrix.get(gc_content, {}).get(tlen, 0)
 
+                print("Read vlaue:", read_value, "bam", bam_path, "chrom", chrom, "start", start, "end", end)
+
                 # Increment counts if the motifs are valid keys
                 if s3_motif in s3:
                     s3[s3_motif] += read_value
@@ -154,9 +154,7 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
 
             except Exception as e:
                 # Catch errors from fetching sequence, e.g., at chromosome ends
-                print(
-                    f"Could not process motif for read {read.query_name} at {chrom}:{read.reference_start}. Error: {e}"
-                )
+                print(f"Could not process motif for read {read.query_name} at {chrom}:{read.reference_start}. Error: {e}")
                 continue
 
     bam.close()

@@ -84,11 +84,7 @@ def get_args():
         help="A BED3 file specifying the regions to extract features, \
             or a directory containing BED files or a .txt file with BED file paths.\n",
     )
-    general_group.add_argument(
-        "-gw",
-        "--genome_wide",
-        action="store_true", default=False,
-        help="If set, the script will extract features genome-wide without using a BED file. Default: [False]")
+    general_group.add_argument("-gw", "--genome_wide", action="store_true", default=False, help="If set, the script will extract features genome-wide without using a BED file. Default: [False]")
     general_group.add_argument("-c", "--cpu", type=int, default=1, help="Number of CPU to use. Default: [1]")
     general_group.add_argument(
         "--gc",
@@ -176,7 +172,7 @@ def run_analysis(args):
     # Read BAM files from the input list
     if input_file_path.is_dir():
         # If input is a directory, list all BAM files in it
-        bam_files = list(input_file_path.glob("*.bam"))
+        bam_files = list(input_file_path.rglob("*.bam"))
         if not bam_files:
             print("Error: No BAM files found in the specified directory.", file=sys.stderr)
             sys.exit(1)
@@ -200,7 +196,7 @@ def run_analysis(args):
             sys.exit(1)
         gc_file_path = Path(args.gc_file)
         if gc_file_path.is_dir():
-            gc_files = list(gc_file_path.glob("*.csv"))
+            gc_files = list(gc_file_path.rglob("*.csv"))
             if not gc_files:
                 print("Error: No GCFix output files found in the specified directory.", file=sys.stderr)
                 sys.exit(1)
@@ -223,7 +219,8 @@ def run_analysis(args):
         bed_file_path = Path(args.bed_file)
         if bed_file_path.is_dir():
             # If a directory is provided, list all BED files in it
-            bed_files = list(bed_file_path.glob("*.bed"))
+            bed_files = list(bed_file_path.rglob("*.bed"))
+            # Continue adding bed files recursively
             if not bed_files:
                 print("Error: No BED files found in the specified directory.", file=sys.stderr)
                 sys.exit(1)
