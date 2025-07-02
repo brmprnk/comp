@@ -140,8 +140,6 @@ def calculate_em(bam_path, output_path, bed_path, gc_file, args):
                     gc_content = gc_module.get_gc_content(ref_seq[3:-3])
                     read_value = gc_matrix.get(gc_content, {}).get(tlen, 0)
 
-                print("Read vlaue:", read_value, "bam", bam_path, "chrom", chrom, "start", start, "end", end)
-
                 # Increment counts if the motifs are valid keys
                 if s3_motif in s3:
                     s3[s3_motif] += read_value
