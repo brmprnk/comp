@@ -16,6 +16,7 @@ apptainer exec --writable-tmpfs --pwd /opt/app --containall \
 	--bind features.py:/opt/app/features.py \
 	--bind input/:/opt/app/input/ \
 	--bind beds/:/opt/app/beds/ \
+	--bind accessory_files/:/opt/app/accessory_files/ \
 	--bind /tudelft.net/staff-umbrella/KWFcfDNA/emc/GCfix_Software/Output_Bam/:/opt/app/GC \
 	--bind /tudelft.net/staff-umbrella/KWFcfDNA/emc/TSSClassification/data/:/opt/app/data/ \
 	--bind /tudelft.net/staff-umbrella/KWFcfDNA/emc/GCfix_Software/hg38/:/opt/app/hg38 \

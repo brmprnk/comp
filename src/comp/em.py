@@ -47,7 +47,7 @@ def reverse_complement(dna_seq: str) -> str:
     return dna_seq.upper().translate(complement_map)[::-1]
 
 
-def calculate_em(bam_path, output_path, bed_file, gc_file, args):
+def calculate_em(bam_path, output_path, bed_path, gc_file, args):
     """
     Calculate k-mer motifs in the given window.
 
@@ -82,7 +82,7 @@ def calculate_em(bam_path, output_path, bed_file, gc_file, args):
         print(e)
         return None
 
-    bed = pd.DataFrame({"chrom": [None], "start": [None], "end": [None]}) if bed_file is None or not Path(bed_file).exists() else pd.read_csv(bed_file, sep="\t", header=None, usecols=[0, 1, 2], names=["chrom", "start", "end"])
+    bed = pd.DataFrame({"chrom": [None], "start": [None], "end": [None]}) if bed_path is None or not Path(bed_path).exists() else pd.read_csv(bed_path, sep="\t", header=None, usecols=[0, 1, 2], names=["chrom", "start", "end"])
 
     for locus in bed.itertuples(index=False):
         chrom = locus.chrom

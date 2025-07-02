@@ -6,6 +6,8 @@ import os
 import sys
 from pathlib import Path
 
+from src.comp.bin import calculate_bin
+
 # Placeholder imports for feature extraction modules.
 # In a real implementation, you would create these files in `comp/src/`
 # and implement the feature extraction logic within them.
@@ -55,8 +57,8 @@ def get_args():
         "-F",
         "--features",
         type=str,
-        default="CNA,NOF,WPS,EM,EMR,FP,FPR,NP,OCF,PFE,TSSC",
-        help="Features to extract, separated by commas (e.g., CNA,NOF).\nAvailable: CNA, NOF, WPS, EM, EMR, FP, FPR, NP, OCF, PFE, TSSC.\nDefault: All features will be extracted.",
+        default="CNA,NOF,WPS,EM,EMR,FP,FPR,NP,OCF,PFE,TSSC,BIN",
+        help="Features to extract, separated by commas (e.g., CNA,NOF).\nAvailable: CNA, NOF, WPS, EM, EMR, FP, FPR, NP, OCF, PFE, TSSC, BIN.\nDefault: All features will be extracted.",
     )
     general_group.add_argument("--mapq", type=int, default=30, help="Minimum mapping quality for reads to be considered. Default: [30]")
     general_group.add_argument("--min_frag_len", type=int, default=51, help="Minimum fragment length to consider. Default: [51]")
@@ -264,6 +266,10 @@ def run_analysis(args):
                     print("  -> Extracting EM...")
                     pool.starmap(calculate_em, starmap_args)
 
+                if "BIN" in features_to_extract:
+                    print("  -> Extracting BIN...")
+                    pool.starmap(calculate_bin, starmap_args)
+
         # After processing all BED files, print a message
         print("Finished processing all BED files.")
 
@@ -271,7 +277,6 @@ def run_analysis(args):
         print("No BED files provided, calculating features for the entire genome.")
 
     # Process each BAM file
-    # @TODO: Make genome-wide feature extraction
     if not args.bed_file or args.genome_wide:
         print("Processing genome-wide BAM files...")
 
