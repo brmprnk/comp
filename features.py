@@ -90,7 +90,7 @@ def get_args():
     general_group.add_argument("-c", "--cpu", type=int, default=1, help="Number of CPU to use. Default: [1]")
     general_group.add_argument(
         "--gc",
-        action="store_true",
+        action="store_false",
         default=True,
         help="Use the GCFix output file to incorporate GC Bias correction. Default: [True]",
     )
