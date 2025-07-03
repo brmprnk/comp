@@ -1,13 +1,13 @@
+import math
 from pathlib import Path
 
 import numpy as np
-import math
-import itertools
 import pandas as pd
 import pysam
 import src.comp.gc as gc_module
 import src.comp.util as util
 from src.comp.em import initialize_kmer_dictionary, reverse_complement
+
 
 def calculate_mds(kmer_counts):
     """
@@ -54,7 +54,7 @@ def calculate_mds(kmer_counts):
 
     # Handle the edge case where there is only one possible motif (log(1)=0)
     if normalization_factor == 0:
-        return 1.0 # By definition, if there's only one outcome, diversity is maximal (or minimal, depending on definition, but 1 is common for normalized entropy)
+        return 1.0  # By definition, if there's only one outcome, diversity is maximal (or minimal, depending on definition, but 1 is common for normalized entropy)
 
     return (shannon_entropy / normalization_factor) * -1  # Return the negative of the entropy to match the original definition
 
@@ -167,7 +167,7 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
 
         absolute_short_fragments[bin_index] = num_short_fragments
         absolute_long_fragments[bin_index] = num_long_fragments
-        fslr_values[bin_index] = np.log2(num_short_fragments / num_long_fragments) if num_long_fragments > 0 else 0
+        fslr_values[bin_index] = np.log2(max(num_short_fragments, 1) / max(num_long_fragments, 1))
 
         # Calculate GC content for the whole region
         if chrom is not None:
@@ -182,7 +182,7 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
         for _, counts in kmer_distribution.items():
             if counts[bin_index] > 0:
                 # Should Pi be relative to the total number of reads or absolute?
-                Pi = counts[bin_index]  / absolute_fragment_counts[bin_index]
+                Pi = counts[bin_index] / absolute_fragment_counts[bin_index]
                 MDS += Pi * np.log2(Pi) / np.log2(number_of_kmers)
         mds_values[bin_index] = MDS
 
