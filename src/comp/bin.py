@@ -56,7 +56,7 @@ def calculate_mds(kmer_counts):
     if normalization_factor == 0:
         return 1.0  # By definition, if there's only one outcome, diversity is maximal (or minimal, depending on definition, but 1 is common for normalized entropy)
 
-    return (shannon_entropy / normalization_factor) * -1  # Return the negative of the entropy to match the original definition
+    return (shannon_entropy / normalization_factor)
 
 
 def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
@@ -99,6 +99,7 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
     for length in range(100, 220 + 1):
         fragment_length_distribution[length] = np.zeros(len(bed), dtype=np.float32)
     kmer_distribution = {kmer: np.zeros(len(bed), dtype=np.float32) for kmer in initialize_kmer_dictionary(3)}
+    bg_kmer_distribution = {f'bg_{kmer}': np.zeros(len(bed), dtype=np.float32) for kmer in initialize_kmer_dictionary(3)}  # background kmers
     mds_values = np.zeros(len(bed), dtype=float)
     gc_content = np.zeros(len(bed), dtype=float)
 
@@ -120,10 +121,10 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
         num_long_fragments = 0  # Defined to be lenghts [151, 220]
         for read in filtered_alignments:
             # Process each fragment once using the first read in the pair
-            if not read.is_read1:
+            if not read.is_read1 or read.mapping_quality <= args.mapq:
                 continue
 
-            tlen = abs(read.template_length)
+            tlen = abs(read.template_length)  # Template length is the length of the fragment
 
             # Determine fragment coordinates and the extended region to fetch
             if not read.is_reverse:  # Fragment is on the forward strand
@@ -163,28 +164,31 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
                 fragment_length_distribution[tlen][bin_index] += read_value
 
             s3_motif = ref_seq[3:6]
-            kmer_distribution[s3_motif][bin_index] += read_value
+            if s3_motif in kmer_distribution:
+                kmer_distribution[s3_motif][bin_index] += read_value
+            else:
+                print(f"Warning: {s3_motif} not found in kmer distribution, skipping")
 
         absolute_short_fragments[bin_index] = num_short_fragments
         absolute_long_fragments[bin_index] = num_long_fragments
         fslr_values[bin_index] = np.log2(max(num_short_fragments, 1) / max(num_long_fragments, 1))
 
         # Calculate GC content for the whole region
+        background_kmer_counts = None
         if chrom is not None:
             ref_seq_full = ref_fasta.fetch(chrom, start, end).upper()
             gc_content[bin_index] = gc_module.get_gc_content(ref_seq_full)
-
-        # Calculate MDS (Motif Diversity Score) as
-        # MDS = sum of kmer 1-64 -Pi*log(Pi)/log(64), where Pi is the frequency of kmer i in the bin
-        # Defined to be in [0, 1]
-        MDS = 0
-        number_of_kmers = len(list(kmer_distribution.keys()))
-        for _, counts in kmer_distribution.items():
-            if counts[bin_index] > 0:
-                # Should Pi be relative to the total number of reads or absolute?
-                Pi = counts[bin_index] / absolute_fragment_counts[bin_index]
-                MDS += Pi * np.log2(Pi) / np.log2(number_of_kmers)
-        mds_values[bin_index] = MDS
+            background_kmer_counts = gc_module.count_kmers(ref_seq_full, k=3)
+            # Add 'bg_' prefix to the kmer counts for background
+            for kmer, count in background_kmer_counts.items():
+                bg_kmer_name = f'bg_{kmer}'
+                if bg_kmer_name in bg_kmer_distribution:
+                    bg_kmer_distribution[bg_kmer_name][bin_index] = count
+                                                        
+        # calculate mds using only the kmer distribution in this bin
+        mds_values[bin_index] = calculate_mds({
+            kmer: count[bin_index] for kmer, count in kmer_distribution.items()
+        })
 
     relative_read_counts = absolute_fragment_counts / np.sum(absolute_fragment_counts) if np.sum(absolute_fragment_counts) > 0 else np.zeros_like(absolute_fragment_counts)
 
@@ -205,6 +209,7 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
     )
     results_df = pd.concat([results_df, pd.DataFrame.from_dict(fragment_length_distribution)], axis=1, ignore_index=False)
     results_df = pd.concat([results_df, pd.DataFrame.from_dict(kmer_distribution)], axis=1, ignore_index=False)
+    results_df = pd.concat([results_df, pd.DataFrame.from_dict(bg_kmer_distribution)], axis=1, ignore_index=False) if background_kmer_counts else results_df
 
     # Save the results to a CSV file
     results_df.to_csv(output_save_file, index=False)

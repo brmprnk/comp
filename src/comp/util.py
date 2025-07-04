@@ -29,8 +29,8 @@ def get_filtered_alignments(bam, args, chrom=None, start=None, end=None):
             lambda a: a.is_paired and bin(~np.uint32(a.flag) & exclude_flags) == exclude_flags_binary and a.mapping_quality >= 5 and (args.min_frag_len <= abs(a.template_length) <= args.max_frag_len) and not a.is_unmapped,
             bam.fetch(
                 contig=chrom if chrom is not None else None,
-                start=(start - args.max_frag_len) if start is not None else None,
-                stop=(end + args.max_frag_len) if end is not None else None,
+                start=start if start is not None else None,
+                stop=end if end is not None else None,
             ),
         )
     except Exception as e:
