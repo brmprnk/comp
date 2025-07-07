@@ -21,3 +21,16 @@ def load_gc_matrix(gc_file, min_frag_len, max_frag_len):
     gc_matrix.set_index("frag_lengths", inplace=True)
 
     return gc_matrix
+
+def count_kmers(sequence, k=3):
+    """Count the frequency of each k-mer in a given sequence."""
+    sequence = str(sequence).upper()  # Ensure the sequence is a string and in uppercase
+    kmer_counts = {}
+    
+    for i in range(len(sequence) - k + 1):
+        kmer = sequence[i:i + k]
+        if kmer not in kmer_counts:
+            kmer_counts[kmer] = 0
+        kmer_counts[kmer] += 1
+    
+    return kmer_counts
