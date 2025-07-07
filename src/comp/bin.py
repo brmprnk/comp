@@ -56,7 +56,7 @@ def calculate_mds(kmer_counts):
     if normalization_factor == 0:
         return 1.0  # By definition, if there's only one outcome, diversity is maximal (or minimal, depending on definition, but 1 is common for normalized entropy)
 
-    return (shannon_entropy / normalization_factor)
+    return shannon_entropy / normalization_factor
 
 
 def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
@@ -99,7 +99,8 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
     for length in range(100, 220 + 1):
         fragment_length_distribution[length] = np.zeros(len(bed), dtype=np.float32)
     kmer_distribution = {kmer: np.zeros(len(bed), dtype=np.float32) for kmer in initialize_kmer_dictionary(3)}
-    bg_kmer_distribution = {f'bg_{kmer}': np.zeros(len(bed), dtype=np.float32) for kmer in initialize_kmer_dictionary(3)}  # background kmers
+    bg_kmer_distribution = {f"bg_{kmer}": np.zeros(len(bed), dtype=np.float32) for kmer in initialize_kmer_dictionary(3)}  # background kmers
+    kmer_length_distribution = np.zeros((len(list(initialize_kmer_dictionary(3))), len(bed), 121), dtype=np.float32)
     mds_values = np.zeros(len(bed), dtype=float)
     gc_content = np.zeros(len(bed), dtype=float)
 
@@ -111,6 +112,9 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
 
         if chrom is not None and chrom not in bam.references:
             continue
+
+        if bin_index % 100 == 0:
+            print(f"Processing bin {bin_index + 1}/{len(bed)}: {chrom}:{start}-{end}")
 
         filtered_alignments = util.get_filtered_alignments(bam, args, chrom=chrom, start=start, end=end)
         if filtered_alignments is None:
@@ -166,6 +170,8 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
             s3_motif = ref_seq[3:6]
             if s3_motif in kmer_distribution:
                 kmer_distribution[s3_motif][bin_index] += read_value
+                s3_motif_pos = list(initialize_kmer_dictionary(3).keys()).index(s3_motif)
+                kmer_length_distribution[s3_motif_pos][bin_index][tlen - 100] += read_value
             else:
                 print(f"Warning: {s3_motif} not found in kmer distribution, skipping")
 
@@ -181,14 +187,12 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
             background_kmer_counts = gc_module.count_kmers(ref_seq_full, k=3)
             # Add 'bg_' prefix to the kmer counts for background
             for kmer, count in background_kmer_counts.items():
-                bg_kmer_name = f'bg_{kmer}'
+                bg_kmer_name = f"bg_{kmer}"
                 if bg_kmer_name in bg_kmer_distribution:
                     bg_kmer_distribution[bg_kmer_name][bin_index] = count
-                                                        
+
         # calculate mds using only the kmer distribution in this bin
-        mds_values[bin_index] = calculate_mds({
-            kmer: count[bin_index] for kmer, count in kmer_distribution.items()
-        })
+        mds_values[bin_index] = calculate_mds({kmer: count[bin_index] for kmer, count in kmer_distribution.items()})
 
     relative_read_counts = absolute_fragment_counts / np.sum(absolute_fragment_counts) if np.sum(absolute_fragment_counts) > 0 else np.zeros_like(absolute_fragment_counts)
 
@@ -214,5 +218,10 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
     # Save the results to a CSV file
     results_df.to_csv(output_save_file, index=False)
     print(f"BIN features saved to {output_save_file}")
+
+    # Save kmer length distribution
+    np.save(output_path / (Path(bam_path).stem + "_kmer_length_distribution.npy"), kmer_length_distribution)
+    print(f"Kmer length distribution saved to {output_path / (Path(bam_path).stem + '_kmer_length_distribution.npy')}")
+
     bam.close()
     ref_fasta.close()

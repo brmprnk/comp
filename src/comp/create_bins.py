@@ -5,8 +5,8 @@ import pandas as pd
 
 # --- Configuration ---
 BLACKLIST_FILE = "accessory_files/hg38_GCcorrection_ExclusionList.merged.sorted.tsv"
-OUTPUT_FILE = "beds/genome_bins/hg38_1mb_filtered_bins.bed"
-BIN_SIZE = 1_000_000
+OUTPUT_FILE = "hg38_100kb_filtered_bins.bed"
+BIN_SIZE = 100_000
 HISTOGRAM_FILE = "bin_size_distribution.png"
 
 # hg38 chromosome sizes (chr1-22, chrX)
@@ -127,7 +127,6 @@ def analyze_and_plot_results(bed_file, output_image_file):
         print(f"\nFiltering bins smaller than {BIN_SIZE:,} bp...", len(df))
         df = df[df["size"] >= BIN_SIZE]
         print(f"Number of bins after filtering: {len(df):,}")
-        df.drop(columns=["size"], inplace=True)
         df.to_csv(bed_file, sep="\t", header=False, index=False)
         print(f"Filtered bins saved to '{bed_file}' with only bins >= {BIN_SIZE:,} bp.")
 
