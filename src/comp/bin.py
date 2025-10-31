@@ -95,34 +95,60 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
     absolute_short_fragments = np.zeros(len(bed), dtype=np.float32)
     absolute_long_fragments = np.zeros(len(bed), dtype=np.float32)
     fslr_values = np.zeros(len(bed), dtype=float)
+    mean_coverage_values = np.zeros(len(bed), dtype=float)
+    mean_coverage_short = np.zeros(len(bed), dtype=float)
+    mean_coverage_long = np.zeros(len(bed), dtype=float)
+    fslr_coverage_values = np.zeros(len(bed), dtype=float)
+    coverage_spread = np.zeros(len(bed), dtype=float)
     fragment_length_distribution = {}
     for length in range(100, 220 + 1):
         fragment_length_distribution[length] = np.zeros(len(bed), dtype=np.float32)
     kmer_distribution = {kmer: np.zeros(len(bed), dtype=np.float32) for kmer in initialize_kmer_dictionary(3)}
     bg_kmer_distribution = {f"bg_{kmer}": np.zeros(len(bed), dtype=np.float32) for kmer in initialize_kmer_dictionary(3)}  # background kmers
-    kmer_length_distribution = np.zeros((len(list(initialize_kmer_dictionary(3))), len(bed), 121), dtype=np.float32)
+    gc_bin_length_distribution = np.zeros((101, 121), dtype=np.float32)  # 100 GC content bins for fragments of lengths 100-220
+    gc_fragment_length_distribution = np.zeros((101, 121), dtype=np.float32)  # 100 GC content bins for fragments of lengths 100-220
+    # kmer_length_distribution = np.zeros((len(list(initialize_kmer_dictionary(3))), len(bed), 121), dtype=np.float32)
     mds_values = np.zeros(len(bed), dtype=float)
     gc_content = np.zeros(len(bed), dtype=float)
+    mean_fragment_gc_content = np.zeros(len(bed), dtype=float)
+    mean_fragment_gc_content_short = np.zeros(len(bed), dtype=float)
+    mean_fragment_gc_content_long = np.zeros(len(bed), dtype=float)
+    rcov = np.zeros(len(bed), dtype=float)
+    griffin_diff = np.zeros(len(bed), dtype=float)
+    mwh = np.zeros(len(bed), dtype=float)
 
     for locus in bed.itertuples():
         bin_index = locus.Index
         chrom = locus.chrom
         start = locus.start
         end = locus.end
+        coverage = np.zeros(end - start)
+        coverage_short = np.zeros(end - start)
+        coverage_long = np.zeros(end - start)
+        gc_content_per_fragment = []
+        gc_content_per_fragment_short = []
+        gc_content_per_fragment_long = []
 
         if chrom is not None and chrom not in bam.references:
             continue
 
-        if bin_index % 100 == 0:
-            print(f"Processing bin {bin_index + 1}/{len(bed)}: {chrom}:{start}-{end}")
+        # Calculate GC content for the whole region
+        background_kmer_counts = None
+        if chrom is not None:
+            ref_seq_full = ref_fasta.fetch(chrom, start, end).upper()
+            gc_content[bin_index] = gc_module.get_gc_content(ref_seq_full)
+            background_kmer_counts = gc_module.count_kmers(ref_seq_full, k=3)
+            # Add 'bg_' prefix to the kmer counts for background
+            for kmer, count in background_kmer_counts.items():
+                bg_kmer_name = f"bg_{kmer}"
+                if bg_kmer_name in bg_kmer_distribution:
+                    bg_kmer_distribution[bg_kmer_name][bin_index] = count
 
         filtered_alignments = util.get_filtered_alignments(bam, args, chrom=chrom, start=start, end=end)
         if filtered_alignments is None:
             print(f"No alignments found for {chrom}:{start}-{end}")
             continue
 
-        num_short_fragments = 0  # Defined to be lengths [100, 150]
-        num_long_fragments = 0  # Defined to be lenghts [151, 220]
         for read in filtered_alignments:
             # Process each fragment once using the first read in the pair
             if not read.is_read1 or read.mapping_quality <= args.mapq:
@@ -153,16 +179,32 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
                 ref_seq = reverse_complement(ref_seq)
 
             read_value = 1
+            frag_gc_content = gc_module.get_gc_content(ref_seq[3:-3])
             if args.gc:
-                frag_gc_content = gc_module.get_gc_content(ref_seq[3:-3])
-                read_value = gc_matrix.get(frag_gc_content, {}).get(tlen, 0)
+                read_value = gc_matrix.get(str(int(frag_gc_content)), {}).get(tlen, 0)
 
-            absolute_fragment_counts[bin_index] += read_value
-
+            if tlen >= 100 and tlen <= 220:  ## ADD GCFIX READ VALUE
+                coverage[frag_start - start : frag_end - start] += read_value
             if tlen >= 100 and tlen <= 150:
-                num_short_fragments += read_value
+                coverage_short[frag_start - start : frag_end - start] += read_value
             elif tlen >= 151 and tlen <= 220:
-                num_long_fragments += read_value
+                coverage_long[frag_start - start : frag_end - start] += read_value
+
+            if tlen >= 100 and tlen <= 220:
+                gc_content_per_fragment.append(frag_gc_content * read_value)
+                gc_fragment_length_distribution[min(int(frag_gc_content * read_value), 100)][tlen - 100] += read_value
+                gc_bin_length_distribution[int(gc_content[bin_index])][tlen - 100] += read_value
+            if tlen >= 100 and tlen <= 150:
+                gc_content_per_fragment_short.append(frag_gc_content * read_value)
+            elif tlen >= 151 and tlen <= 220:
+                gc_content_per_fragment_long.append(frag_gc_content * read_value)
+
+            if tlen >= 100 and tlen <= 220:
+                absolute_fragment_counts[bin_index] += read_value
+            if tlen >= 100 and tlen <= 150:
+                absolute_short_fragments[bin_index] += read_value
+            elif tlen >= 151 and tlen <= 220:
+                absolute_long_fragments[bin_index] += read_value
 
             if tlen in fragment_length_distribution:
                 fragment_length_distribution[tlen][bin_index] += read_value
@@ -170,29 +212,44 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
             s3_motif = ref_seq[3:6]
             if s3_motif in kmer_distribution:
                 kmer_distribution[s3_motif][bin_index] += read_value
-                s3_motif_pos = list(initialize_kmer_dictionary(3).keys()).index(s3_motif)
-                kmer_length_distribution[s3_motif_pos][bin_index][tlen - 100] += read_value
+                # s3_motif_pos = list(initialize_kmer_dictionary(3).keys()).index(s3_motif)
+                # kmer_length_distribution[s3_motif_pos][bin_index][tlen - 100] += read_value
             else:
                 print(f"Warning: {s3_motif} not found in kmer distribution, skipping")
 
-        absolute_short_fragments[bin_index] = num_short_fragments
-        absolute_long_fragments[bin_index] = num_long_fragments
-        fslr_values[bin_index] = np.log2(max(num_short_fragments, 1) / max(num_long_fragments, 1))
-
-        # Calculate GC content for the whole region
-        background_kmer_counts = None
-        if chrom is not None:
-            ref_seq_full = ref_fasta.fetch(chrom, start, end).upper()
-            gc_content[bin_index] = gc_module.get_gc_content(ref_seq_full)
-            background_kmer_counts = gc_module.count_kmers(ref_seq_full, k=3)
-            # Add 'bg_' prefix to the kmer counts for background
-            for kmer, count in background_kmer_counts.items():
-                bg_kmer_name = f"bg_{kmer}"
-                if bg_kmer_name in bg_kmer_distribution:
-                    bg_kmer_distribution[bg_kmer_name][bin_index] = count
+        fslr_values[bin_index] = np.log2(max(absolute_short_fragments[bin_index], 1) / max(absolute_long_fragments[bin_index], 1))
 
         # calculate mds using only the kmer distribution in this bin
         mds_values[bin_index] = calculate_mds({kmer: count[bin_index] for kmer, count in kmer_distribution.items()})
+
+        # Calculate the mean coverage in the bin
+        mean_coverage_values[bin_index] = np.sum(coverage) / len(coverage) if len(coverage) > 0 else 0
+        mean_coverage_short[bin_index] = np.sum(coverage_short) / len(coverage_short) if len(coverage_short) > 0 else 0
+        mean_coverage_long[bin_index] = np.sum(coverage_long) / len(coverage_long) if len(coverage_long) > 0 else 0
+        fslr_coverage_values[bin_index] = np.log2(max(mean_coverage_short[bin_index], 1) / max(mean_coverage_long[bin_index], 1))
+
+        # Calculate the coverage spread in the bin
+        number_of_bases_covered = np.sum(coverage > 0)
+        coverage_spread[bin_index] = number_of_bases_covered / len(coverage) if len(coverage) > 0 else 0
+
+        # Calculate the mean gc content of all the mapped fragments
+        mean_fragment_gc_content[bin_index] = np.mean(gc_content_per_fragment) if gc_content_per_fragment else 0
+        mean_fragment_gc_content_short[bin_index] = np.mean(gc_content_per_fragment_short) if gc_content_per_fragment_short else 0
+        mean_fragment_gc_content_long[bin_index] = np.mean(gc_content_per_fragment_long) if gc_content_per_fragment_long else 0
+
+        # Calculate TSS Features
+        normalized_coverage = coverage / np.mean(coverage) if np.mean(coverage) > 0 else coverage
+        rcov[bin_index] = util.calculate_rcov(normalized_coverage, region_type="promoter")
+        _, window_coverage, mwh[bin_index] = util.desarkar_features(normalized_coverage)
+        # Extra feature based on difference between mean coverage inside and outside the 1000bp window
+        midpoint = int(len(coverage) / 2)
+        mean_outside_coverage = np.mean(
+            np.r_[
+                normalized_coverage[: midpoint - 990],
+                normalized_coverage[midpoint + 990 :],
+            ]
+        )
+        griffin_diff[bin_index] = mean_outside_coverage - window_coverage
 
     relative_read_counts = absolute_fragment_counts / np.sum(absolute_fragment_counts) if np.sum(absolute_fragment_counts) > 0 else np.zeros_like(absolute_fragment_counts)
 
@@ -203,11 +260,22 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
             "start": bed["start"],
             "end": bed["end"],
             "absolute_fragment_counts": absolute_fragment_counts,
-            "relative_read_counts": relative_read_counts,
+            "relative_fragment_counts": relative_read_counts,
             "absolute_short_fragments": absolute_short_fragments,
             "absolute_long_fragments": absolute_long_fragments,
+            "mean_coverage": mean_coverage_values,
+            "mean_coverage_short": mean_coverage_short,
+            "mean_coverage_long": mean_coverage_long,
+            "coverage_spread": coverage_spread,
             "fslr": fslr_values,
+            "fslr_coverage": fslr_coverage_values,
+            "rcov": rcov,
+            "griffin_diff": griffin_diff,
+            "mwh": mwh,
             "gc_content": gc_content,
+            "mean_fragment_gc_content": mean_fragment_gc_content,
+            "mean_fragment_gc_content_short": mean_fragment_gc_content_short,
+            "mean_fragment_gc_content_long": mean_fragment_gc_content_long,
             "mds": mds_values,
         }
     )
@@ -219,9 +287,15 @@ def calculate_bin(bam_path, output_path, bed_path, gc_file, args):
     results_df.to_csv(output_save_file, index=False)
     print(f"BIN features saved to {output_save_file}")
 
-    # Save kmer length distribution
-    np.save(output_path / (Path(bam_path).stem + "_kmer_length_distribution.npy"), kmer_length_distribution)
-    print(f"Kmer length distribution saved to {output_path / (Path(bam_path).stem + '_kmer_length_distribution.npy')}")
+    # # Save kmer length distribution
+    # np.save(output_path / (Path(bam_path).stem + "_kmer_length_distribution.npy"), kmer_length_distribution)
+    # print(f"Kmer length distribution saved to {output_path / (Path(bam_path).stem + '_kmer_length_distribution.npy')}")
+
+    # Save GC length distribution
+    np.save(output_path / (Path(bam_path).stem + "_gc_bin_length_distribution.npy"), gc_bin_length_distribution)
+
+    # Save GC fragment length distribution
+    np.save(output_path / (Path(bam_path).stem + "_gc_fragment_length_distribution.npy"), gc_fragment_length_distribution)
 
     bam.close()
     ref_fasta.close()

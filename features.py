@@ -61,8 +61,8 @@ def get_args():
         help="Features to extract, separated by commas (e.g., CNA,NOF).\nAvailable: CNA, NOF, WPS, EM, EMR, FP, FPR, NP, OCF, PFE, TSSC, BIN.\nDefault: All features will be extracted.",
     )
     general_group.add_argument("--mapq", type=int, default=30, help="Minimum mapping quality for reads to be considered. Default: [30]")
-    general_group.add_argument("--min_frag_len", type=int, default=51, help="Minimum fragment length to consider. Default: [51]")
-    general_group.add_argument("--max_frag_len", type=int, default=400, help="Maximum fragment length to consider. Default: [400]")
+    general_group.add_argument("--min_frag_len", type=int, default=100, help="Minimum fragment length to consider. Default: [51]")
+    general_group.add_argument("--max_frag_len", type=int, default=220, help="Maximum fragment length to consider. Default: [400]")
     general_group.add_argument(
         "-g",
         "--genome_version",

@@ -137,8 +137,8 @@ def calculate_em(bam_path, output_path, bed_path, gc_file, args):
                 # Check for gc correction of read
                 read_value = 1
                 if args.gc:
-                    gc_content = gc_module.get_gc_content(ref_seq[3:-3])
-                    read_value = gc_matrix.get(gc_content, {}).get(tlen, 0)
+                    gc_content = gc_module.get_gc_content(ref_seq[3:-3], round=True)
+                    read_value = gc_matrix.get(str(gc_content), {}).get(tlen, 0)
 
                 # Increment counts if the motifs are valid keys
                 if s3_motif in s3:
