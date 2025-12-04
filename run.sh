@@ -14,7 +14,7 @@
 
 # Build the command with optional job splitting parameters
 # CMD_ARGS="-I input/cris_bam.txt --gc_file input/cris_gc.txt -c 64 -F BIN -b hg38_extended_chrom1.bed"
-CMD_ARGS="-I cris/EE87922.hg38.frag.tsv.bam --gc_file GC/Output_Bam/EE87922.hg38.frag.tsv__correction_factors.csv -c 1 -F WPS -b hg38_extended_chrom1.bed"
+CMD_ARGS="-I cris/EE87922.hg38.frag.tsv.bam --gc_file GC/Output_Bam/EE87922.hg38.frag.tsv__correction_factors.csv -c 1 -F WPS -b beds/hg38_extended_chrom1.bed"
 # CMD_ARGS="-I input/cris_bam.txt --gc_file input/cris_gc.txt -c 64 -F BIN -b beds/biomart_10kb.bed --aggregate"  # Add this if you want to aggregate coverage across loci (.npy)
 # CMD_ARGS="-I input/cris_bam.txt --gc_file input/cris_gc.txt -c 64 -F BIN -b beds/biomart_10kb.bed --coverage"  # Add this if you want to store coverage for each locus (.npy), but be cautious of large file sizes, especially with many loci!!!
 
