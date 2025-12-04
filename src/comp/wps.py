@@ -29,10 +29,10 @@ def calculate_wps(bam_path, output_path, bed_path, gc_file, args, wps_window):
 
     # Read the bed file
     bed = pd.DataFrame({"chrom": [None], "start": [None], "end": [None]}) if bed_path is None or not Path(bed_path).exists() else pd.read_csv(bed_path, sep="\t", header=None, usecols=[0, 1, 2], names=["chrom", "start", "end"])
+    print(bed.head())
 
     for locus in bed.itertuples():
-        # Remove chr during local testing to match the sample bam file, otherwise remove the replace command
-        chrom = locus.chrom.replace("chr", "")
+        chrom = locus.chrom
         start = int(locus.start)
         end = int(locus.end)
         print(f"Processing region {chrom}:{start}-{end}")
