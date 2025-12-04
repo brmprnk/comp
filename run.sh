@@ -32,7 +32,6 @@ apptainer exec --writable-tmpfs --pwd /opt/app --containall \
 	--bind input/:/opt/app/input/ \
 	--bind beds/:/opt/app/beds/ \
 	--bind accessory_files/:/opt/app/accessory_files/ \
-	--bind nested_cv_results/:/opt/app/nested_cv_results/ \
 	--bind /tudelft.net/staff-umbrella/KWFcfDNA/preprocessing/cris/:/opt/app/cris/ \
 	--bind /tudelft.net/staff-umbrella/KWFcfDNA/preprocessing/jiang/:/opt/app/jiang/ \
 	--bind /tudelft.net/staff-umbrella/KWFcfDNA/preprocessing/lucas/:/opt/app/lucas/ \
