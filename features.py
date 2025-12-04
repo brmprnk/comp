@@ -328,8 +328,9 @@ def run_analysis(args):
 
         if "WPS" in features_to_extract:
             print("  -> Extracting WPS...")
+            bed_path = Path(args.bed_file)
             wps_window = 120
-            calculate_wps(bam_path, output_path, bed_file_path, gc_file_path, args, wps_window)
+            calculate_wps(bam_path, output_path, bed_path, gc_file_path, args, wps_window)
 
     # print(f"Finished processing {sample_name}.")
 
