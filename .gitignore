@@ -4,6 +4,7 @@ logs/
 .vscode/
 notebooks/
 lucy/
+analysis/bin_features/
 
 # Files
 *.sif
