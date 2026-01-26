@@ -110,7 +110,7 @@ section_whitelines = 1
 
 [tool.pixi.workspace]
 channels = ["conda-forge", "bioconda"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64"]
 
 [tool.pixi.environments]
 default = { solve-group = "default" }

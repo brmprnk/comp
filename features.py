@@ -7,24 +7,8 @@ import sys
 from pathlib import Path
 
 from src.comp.bin import calculate_bin
-
-# Placeholder imports for feature extraction modules.
-# In a real implementation, you would create these files in `comp/src/`
-# and implement the feature extraction logic within them.
-# # from comp.src.cna import calculate_cna
 from src.comp.em import calculate_em
-
-# from comp.src.em import calculate_em
-# from comp.src.em import calculate_em_gw
-# from comp.src.fp import calculate_fp
-# from comp.src.nof import calculate_nof
-# from comp.src.np import calculate_np
-# from comp.src.wps import calculate_wps
-# from comp.src.ocf import calculate_ocf
-# from comp.src.emr import calculate_emr
-# from comp.src.fpr import calculate_fpr
-# from comp.src.pfe import calculate_pfe
-# from comp.src.tssc import calculate_tssc
+from src.comp.wps import calculate_wps
 
 
 def get_args():
@@ -95,6 +79,11 @@ def get_args():
         help="Use the GCFix output file to incorporate GC Bias correction. Default: [True]",
     )
     general_group.add_argument("--gc_file", type=str, help="Path to the GCFix output file for GC Bias correction.")
+    general_group.add_argument("-a", "--aggregate", action="store_true", default=False, help="If set, aggregate coverage across all loci instead of storing each locus separately. Default: [False]")
+    general_group.add_argument("--coverage", action="store_true", default=False, help="If set, store coverage for each locus instead of aggregate or no coverage. Default: [False]")
+    general_group.add_argument("-ws", "--window_size", type=int, default=10000, help="Window size for genome-wide feature extraction. Default: [10000]")
+    general_group.add_argument("--job_index", type=int, default=None, help="Job index for splitting BED file processing across multiple jobs (0-based). Default: [None] (process all)")
+    general_group.add_argument("--total_jobs", type=int, default=1, help="Total number of jobs to split BED file processing. Default: [1]")
 
     # --- CNA specific options ---
     cna_group = parser.add_argument_group("Options specific for Copy Number Alterations (CNA)")
@@ -238,6 +227,31 @@ def run_analysis(args):
             print("Error: No BED files listed in the BED file.", file=sys.stderr)
             sys.exit(1)
 
+    # Split BED files across multiple jobs if requested
+    if args.job_index is not None and args.total_jobs > 1:
+        if args.job_index < 0 or args.job_index >= args.total_jobs:
+            print(f"Error: job_index ({args.job_index}) must be between 0 and {args.total_jobs - 1}", file=sys.stderr)
+            sys.exit(1)
+
+        # Calculate which BED files this job should process
+        total_beds = len(bed_files)
+        beds_per_job = total_beds // args.total_jobs
+        remainder = total_beds % args.total_jobs
+
+        # Distribute remainder beds among first jobs
+        if args.job_index < remainder:
+            start_idx = args.job_index * (beds_per_job + 1)
+            end_idx = start_idx + beds_per_job + 1
+        else:
+            start_idx = args.job_index * beds_per_job + remainder
+            end_idx = start_idx + beds_per_job
+
+        bed_files = bed_files[start_idx:end_idx]
+        print(f"\n=== Job {args.job_index + 1}/{args.total_jobs}: Processing BED files {start_idx + 1}-{end_idx} of {total_beds} total ===")
+        if not bed_files:
+            print(f"Warning: No BED files assigned to job {args.job_index + 1}")
+            sys.exit(0)
+
     # Get the list of features to extract
     features_to_extract = {feature.strip().upper() for feature in args.features.split(",")}
     print(f"Requested features: {', '.join(sorted(features_to_extract))}")
@@ -294,77 +308,29 @@ def run_analysis(args):
             if "EM" in features_to_extract:
                 print("  -> Extracting EM...")
                 pool.starmap(calculate_em, starmap_args)
-    # for bam_file in bam_files:
-    #     bam_path = Path(bam_file)
-    #     if not bam_path.is_file():
-    #         print(f"Warning: BAM file not found, skipping: {bam_file}", file=sys.stderr)
-    #         continue
 
-    #     print(f"\nProcessing GENOME-WIDE BAM file: {bam_file}")
+    for bam_file in bam_files:
+        bam_path = Path(bam_file)
+        if not bam_path.is_file():
+            print(f"Warning: BAM file not found, skipping: {bam_file}", file=sys.stderr)
+            continue
 
-    #     # Create a specific output directory for the current sample
-    #     sample_name = bam_path.stem
-    #     sample_output_dir = output_path / sample_name
-    #     sample_output_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\nProcessing GENOME-WIDE BAM file: {bam_file}")
 
-    #     # --- Call feature extraction functions based on user selection ---
-    #     # Each function would be imported from comp/src/ and would handle
-    #     # the specific logic for that feature.
+        # Create a specific output directory for the current sample
+        sample_name = bam_path.stem
+        sample_output_dir = output_path / sample_name
+        sample_output_dir.mkdir(parents=True, exist_ok=True)
 
-    #     # if 'CNA' in features_to_extract:
-    #     #     print("  -> Extracting CNA...")
-    #     #     # calculate_cna(bam_path, sample_output_dir, args)
-    #     #     pass
+        # --- Call feature extraction functions based on user selection ---
+        # Each function would be imported from comp/src/ and would handle
+        # the specific logic for that feature.
 
-    #     if 'EM' in features_to_extract:
-    #         print("  -> Extracting EM...")
-    #         calculate_em(bam_path, sample_output_dir, args)
-    #         pass
-
-    # if 'FP' in features_to_extract:
-    #     print("  -> Extracting FP...")
-    #     # calculate_fp(bam_path, sample_output_dir, args)
-    #     pass
-
-    # if 'NOF' in features_to_extract:
-    #     print("  -> Extracting NOF...")
-    #     # calculate_nof(bam_path, sample_output_dir, args)
-    #     pass
-
-    # if 'NP' in features_to_extract:
-    #     print("  -> Extracting NP...")
-    #     # calculate_np(bam_path, sample_output_dir, args)
-    #     pass
-
-    # if 'WPS' in features_to_extract:
-    #     print("  -> Extracting WPS...")
-    #     # calculate_wps(bam_path, sample_output_dir, args)
-    #     pass
-
-    # if 'OCF' in features_to_extract:
-    #     print("  -> Extracting OCF...")
-    #     # calculate_ocf(bam_path, sample_output_dir, args)
-    #     pass
-
-    # if 'EMR' in features_to_extract:
-    #     print("  -> Extracting EMR...")
-    #     # calculate_emr(bam_path, sample_output_dir, args)
-    #     pass
-
-    # if 'FPR' in features_to_extract:
-    #     print("  -> Extracting FPR...")
-    #     # calculate_fpr(bam_path, sample_output_dir, args)
-    #     pass
-
-    # if 'PFE' in features_to_extract:
-    #     print("  -> Extracting PFE...")
-    #     # calculate_pfe(bam_path, sample_output_dir, args)
-    #     pass
-
-    # if 'TSSC' in features_to_extract:
-    #     print("  -> Extracting TSSC...")
-    #     # calculate_tssc(bam_path, sample_output_dir, args)
-    #     pass
+        if "WPS" in features_to_extract:
+            print("  -> Extracting WPS...")
+            bed_path = Path(args.bed_file)
+            wps_window = 120
+            calculate_wps(bam_path, output_path, bed_path, gc_file_path, args, wps_window)
 
     # print(f"Finished processing {sample_name}.")
 

@@ -3,6 +3,8 @@ extracted_features/
 logs/
 .vscode/
 notebooks/
+lucy/
+analysis/bin_features/
 
 # Files
 *.sif
@@ -170,3 +172,4 @@ _version.py
 # pixi environments
 .pixi
 *.egg-info
+features_local.py
