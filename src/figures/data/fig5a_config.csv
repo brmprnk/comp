@@ -1,0 +1,5 @@
+method,feature,classifier,weighting_function,top_genes,source_dir,selection_mean_auc
+data_driven,griffin_diff,Support Vector Machine,mean_diff,14224,nested_cv_results_cris/pancan_dd,0.9458730158730159
+rna,rcov,Multi-Layer Perceptron,,,nested_cv_results_cris/nested_rna_pancan,0.7145124716553288
+atac,ulz_atac_tfbs_features_pancan,Support Vector Machine,,,nested_cv_results_cris/pancan_atac - Copy,0.9043764172335601
+ichorcna,ichorcna_tf,,,,accessory_files/cris_stage_vaf_coverage_ichor.csv,

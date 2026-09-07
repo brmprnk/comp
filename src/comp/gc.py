@@ -13,7 +13,6 @@ def get_gc_content(sequence, round=False):
         return int((gc_count / len(sequence)) * 100) if len(sequence) > 0 else 0
     return (gc_count / len(sequence)) * 100 if len(sequence) > 0 else 0
 
-
 def load_gc_matrix(gc_file, min_frag_len, max_frag_len):
     """Load the GC matrix from a file."""
     gc_matrix = pd.read_csv(gc_file)

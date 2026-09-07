@@ -232,12 +232,12 @@ def run_analysis(args):
         if args.job_index < 0 or args.job_index >= args.total_jobs:
             print(f"Error: job_index ({args.job_index}) must be between 0 and {args.total_jobs - 1}", file=sys.stderr)
             sys.exit(1)
-
+        
         # Calculate which BED files this job should process
         total_beds = len(bed_files)
         beds_per_job = total_beds // args.total_jobs
         remainder = total_beds % args.total_jobs
-
+        
         # Distribute remainder beds among first jobs
         if args.job_index < remainder:
             start_idx = args.job_index * (beds_per_job + 1)
@@ -245,7 +245,7 @@ def run_analysis(args):
         else:
             start_idx = args.job_index * beds_per_job + remainder
             end_idx = start_idx + beds_per_job
-
+        
         bed_files = bed_files[start_idx:end_idx]
         print(f"\n=== Job {args.job_index + 1}/{args.total_jobs}: Processing BED files {start_idx + 1}-{end_idx} of {total_beds} total ===")
         if not bed_files:

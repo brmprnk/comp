@@ -1,0 +1,2 @@
+observed_cv_auc,true_full_auc,n_shuffles,top_k,weights_type,feature,classifier,n_genes,selection_type,source_dir
+0.9595238095238094,1.0,10,1000,coefficients,griffin_diff,Support Vector Machine,15000,mean_diff,nested_cv_results_cris/label_shuffle_best_model_search_dd

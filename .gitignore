@@ -1,16 +1,25 @@
 # Directories
 extracted_features/
-logs/
+logs/*
+!logs/.gitkeep
+notebooks/archived/
 .vscode/
-notebooks/
-lucy/
-analysis/bin_features/
+.agents/
+.claude/
+__marimo__/
+accessory_files/
+input/
+results/
+nested_cv_result*/
 
 # Files
 *.sif
 *.out
 *.bam
 *.bai
+*.png
+*.pdf
+skills-lock.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
